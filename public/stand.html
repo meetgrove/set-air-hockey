@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SET ARENA // Canlı Stant Ekranı & Skor Tablosu</title>
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            set: {
+              red: '#FF2E3B',
+              darkred: '#99000C',
+              blue: '#00E5FF',
+              darkblue: '#005B99',
+              dark: '#08090C',
+              card: '#10131A',
+            }
+          },
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+            display: ['"Bebas Neue"', 'sans-serif'],
+            mono: ['"Space Grotesk"', 'monospace'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Standalone QR Code Generator -->
+  <script src="qrcode.min.js"></script>
+
+  <style>
+    @keyframes pulseGlow {
+      0%, 100% { box-shadow: 0 0 25px rgba(255, 46, 59, 0.25); }
+      50% { box-shadow: 0 0 50px rgba(255, 46, 59, 0.55); }
+    }
+    .qr-card-glow {
+      animation: pulseGlow 3s ease-in-out infinite;
+    }
+    .neon-text-red {
+      text-shadow: 0 0 15px rgba(255, 46, 59, 0.6);
+    }
+    .neon-text-blue {
+      text-shadow: 0 0 15px rgba(0, 229, 255, 0.6);
+    }
+  </style>
+</head>
+<body class="bg-[#06070a] text-white select-none overflow-hidden antialiased h-screen flex flex-col justify-between p-6">
+
+  <!-- Top Stand Header -->
+  <header class="flex items-center justify-between border-b border-white/10 pb-4">
+    <div class="flex items-center space-x-4">
+      <img src="assets/set_logo.png" alt="SET Topluluğu" class="h-9 w-auto object-contain">
+      <div class="h-7 w-[1px] bg-white/20"></div>
+      <div>
+        <h1 class="font-display tracking-widest text-2xl text-white flex items-center gap-2">
+          SET ARENA <span class="text-set-red">// CANLI STANT YAYINI</span>
+        </h1>
+        <p class="text-[11px] font-mono text-gray-400">ÜNİVERSİTE TOPLULUK TANITIM GÜNLERİ 2026</p>
+      </div>
+    </div>
+
+    <!-- Live Stats Pill -->
+    <div class="flex items-center space-x-6">
+      <div class="flex items-center space-x-2 bg-neutral-900/80 px-4 py-2 rounded-xl border border-white/10">
+        <i data-lucide="gamepad-2" class="w-5 h-5 text-set-red"></i>
+        <div>
+          <div class="text-[10px] font-mono text-gray-400 uppercase">Oynanan Maç</div>
+          <div id="stat-total-matches" class="font-display text-xl leading-none text-white">0</div>
+        </div>
+      </div>
+
+      <div class="flex items-center space-x-2 bg-neutral-900/80 px-4 py-2 rounded-xl border border-white/10">
+        <i data-lucide="users" class="w-5 h-5 text-set-blue"></i>
+        <div>
+          <div class="text-[10px] font-mono text-gray-400 uppercase">Kayıtlı Katılımcı</div>
+          <div id="stat-total-leads" class="font-display text-xl leading-none text-white">0</div>
+        </div>
+      </div>
+
+      <a href="/api/leads/csv" class="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 border border-white/15 text-xs font-mono font-bold text-gray-200 flex items-center gap-2 transition-all">
+        <i data-lucide="download" class="w-4 h-4 text-emerald-400"></i>
+        <span>Excel CSV İndir</span>
+      </a>
+    </div>
+  </header>
+
+  <!-- Main Grid Content -->
+  <main class="grid grid-cols-12 gap-6 my-auto h-[calc(100vh-140px)] items-stretch">
+
+    <!-- LEFT COLUMN: BIG QR CODE & DIRECT PLAY (Col 5) -->
+    <section class="col-span-5 flex flex-col justify-between p-6 rounded-3xl bg-neutral-950/80 border border-set-red/30 qr-card-glow relative overflow-hidden">
+      <!-- Glow effect inside -->
+      <div class="absolute -top-24 -left-24 w-60 h-60 rounded-full bg-set-red/15 blur-3xl pointer-events-none"></div>
+
+      <div>
+        <div class="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-red-950/60 border border-set-red/40 text-xs font-mono text-red-200 mb-3">
+          <span class="w-2 h-2 rounded-full bg-set-red animate-ping"></span>
+          <span>HEMEN ŞİMDİ OYNA</span>
+        </div>
+
+        <h2 class="font-display text-4xl lg:text-5xl uppercase tracking-wide leading-tight mb-2">
+          TELEFONUNLA TARA, <br>
+          <span class="text-transparent bg-clip-text bg-gradient-to-r from-set-red via-orange-400 to-set-blue">ANINDA 1V1 YARIŞ!</span>
+        </h2>
+        <p class="text-xs text-gray-300">
+          Uygulama yüklemek yok! Kameranı QR koda tut, arkadaşına meydan oku ve standımızdan sürpriz hediyeler kazan!
+        </p>
+      </div>
+
+      <!-- QR Display Center -->
+      <div class="flex flex-col items-center my-auto py-2">
+        <div class="p-4 bg-white rounded-3xl shadow-2xl relative">
+          <div id="stand-qrcode"></div>
+        </div>
+
+        <div class="mt-4 text-center">
+          <div class="text-[11px] font-mono text-gray-400 uppercase tracking-widest">VEYA TARAYICIDAN GİR:</div>
+          <div id="stand-url-txt" class="font-mono text-sm font-bold text-set-blue tracking-wider mt-0.5">http://...</div>
+        </div>
+      </div>
+
+      <!-- Prize callout -->
+      <div class="p-3.5 rounded-2xl bg-neutral-900/90 border border-yellow-500/30 flex items-center space-x-3.5">
+        <div class="w-10 h-10 rounded-xl bg-yellow-500/20 border border-yellow-500/40 flex items-center justify-center text-yellow-400 shrink-0">
+          <i data-lucide="gift" class="w-5 h-5"></i>
+        </div>
+        <div>
+          <h4 class="text-xs font-bold text-white">Maçı Kazan, Standımızdan Hediyeni Al!</h4>
+          <p class="text-[11px] text-gray-400">SET Rozetleri, Özel Çıkartmalar ve Büyük Çekiliş Hakkı seni bekliyor.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- RIGHT COLUMN: LEADERBOARD & RECENT MATCHES (Col 7) -->
+    <section class="col-span-7 flex flex-col justify-between gap-5 h-full">
+
+      <!-- Top Half: LEADERBOARD -->
+      <div class="p-6 rounded-3xl bg-neutral-950/70 border border-white/10 flex-1 flex flex-col overflow-hidden">
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex items-center space-x-2.5">
+            <div class="w-8 h-8 rounded-lg bg-yellow-500/20 border border-yellow-500/40 flex items-center justify-center text-yellow-400">
+              <i data-lucide="trophy" class="w-4 h-4"></i>
+            </div>
+            <div>
+              <h3 class="font-display text-2xl tracking-wide text-white leading-none">GÜNÜN ŞAMPİYONLARI</h3>
+              <p class="text-[10px] font-mono text-gray-400">LİDERLİK TABLOSU (EN ÇOK GALİBİYET)</p>
+            </div>
+          </div>
+          <span class="text-xs font-mono text-yellow-400 bg-yellow-950/40 px-3 py-1 rounded-full border border-yellow-500/30">CANLI SIRALAMA</span>
+        </div>
+
+        <!-- Leaderboard Table -->
+        <div class="flex-1 overflow-y-auto space-y-2 pr-1" id="leaderboard-list">
+          <div class="text-center text-gray-500 font-mono text-xs py-8">Henüz maç kaydı yok. İlk şampiyon sen ol!</div>
+        </div>
+      </div>
+
+      <!-- Bottom Half: RECENT MATCHES TICKER -->
+      <div class="p-5 rounded-3xl bg-neutral-950/70 border border-white/10 h-44 flex flex-col">
+        <div class="flex items-center justify-between mb-2.5">
+          <div class="flex items-center space-x-2">
+            <i data-lucide="activity" class="w-4 h-4 text-emerald-400"></i>
+            <span class="text-xs font-mono font-bold text-gray-300 uppercase tracking-wider">SON OYNANAN MAÇLAR</span>
+          </div>
+          <div class="flex items-center space-x-1.5 text-[10px] font-mono text-emerald-400">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span>CANLI AKIŞ</span>
+          </div>
+        </div>
+
+        <div id="recent-matches-grid" class="grid grid-cols-2 gap-2 flex-1 overflow-y-auto pr-1">
+          <div class="col-span-2 text-center text-gray-500 font-mono text-xs py-4">Sonuçlar bekleniyor...</div>
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- Bottom Footer Marquee -->
+  <footer class="flex items-center justify-between text-xs font-mono text-gray-500 pt-3 border-t border-white/10">
+    <div class="flex items-center space-x-4">
+      <span>SET (Sportif ve Sosyal Etkinlikler Topluluğu)</span>
+      <span>•</span>
+      <span class="text-set-red">1v1 Air Hockey Challenge Arena</span>
+    </div>
+    <div class="flex items-center space-x-2">
+      <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+      <span class="text-gray-300">Stant Sunucusu Aktif</span>
+    </div>
+  </footer>
+
+  <!-- Scoreboard Update Script -->
+  <script>
+    let serverInfo = null;
+
+    async function fetchInfo() {
+      try {
+        const res = await fetch('/api/info');
+        serverInfo = await res.json();
+
+        // Render QR Code
+        const isLocalHost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+        const playUrl = serverInfo.tunnelUrl || (!isLocalHost ? window.location.origin : `http://${serverInfo.localIp}:${serverInfo.port}`);
+
+        document.getElementById('stand-url-txt').textContent = playUrl;
+
+        new QRCode(qrBox, {
+          text: playUrl,
+          width: 190,
+          height: 190,
+          colorDark: '#06070a',
+          colorLight: '#ffffff',
+          correctLevel: QRCode.CorrectLevel.M
+        });
+      } catch (e) {
+        console.error('Info hatası:', e);
+      }
+    }
+
+    async function updateScoreboard() {
+      try {
+        const res = await fetch('/api/scoreboard');
+        const data = await res.json();
+
+        document.getElementById('stat-total-matches').textContent = data.totalMatches || 0;
+        document.getElementById('stat-total-leads').textContent = data.totalLeads || 0;
+
+        // Leaderboard List
+        const lList = document.getElementById('leaderboard-list');
+        if (data.leaderboard && data.leaderboard.length > 0) {
+          lList.innerHTML = data.leaderboard.map((item, idx) => {
+            let medal = `<span class="font-mono text-gray-400 text-xs w-5">${idx + 1}</span>`;
+            let borderClass = 'border-white/5';
+            let bgClass = 'bg-white/5';
+
+            if (idx === 0) {
+              medal = `<span class="text-base text-yellow-400">🥇</span>`;
+              borderClass = 'border-yellow-500/40';
+              bgClass = 'bg-yellow-950/20';
+            } else if (idx === 1) {
+              medal = `<span class="text-base text-gray-300">🥈</span>`;
+              borderClass = 'border-gray-400/40';
+              bgClass = 'bg-gray-800/20';
+            } else if (idx === 2) {
+              medal = `<span class="text-base text-amber-600">🥉</span>`;
+              borderClass = 'border-amber-600/40';
+              bgClass = 'bg-amber-950/20';
+            }
+
+            return `
+              <div class="flex items-center justify-between p-3 rounded-2xl ${bgClass} border ${borderClass} transition-all">
+                <div class="flex items-center space-x-3">
+                  ${medal}
+                  <span class="font-bold text-sm text-white">${item.name}</span>
+                </div>
+                <div class="flex items-center space-x-4 text-xs font-mono">
+                  <span class="text-gray-400">${item.matches} Maç</span>
+                  <span class="font-bold text-set-red bg-red-950/60 px-2 py-0.5 rounded border border-red-500/30">${item.wins} Galibiyet</span>
+                </div>
+              </div>
+            `;
+          }).join('');
+        }
+
+        // Recent Matches Grid
+        const mGrid = document.getElementById('recent-matches-grid');
+        if (data.recentMatches && data.recentMatches.length > 0) {
+          mGrid.innerHTML = data.recentMatches.map(m => `
+            <div class="flex items-center justify-between p-2.5 rounded-xl bg-white/5 border border-white/5 text-xs font-mono">
+              <span class="font-bold ${m.winner === m.p1 ? 'text-set-red' : 'text-gray-400'} truncate max-w-[80px]">${m.p1}</span>
+              <span class="px-2 py-0.5 bg-black/60 rounded text-yellow-400 font-bold tracking-wider">${m.s1} - ${m.s2}</span>
+              <span class="font-bold ${m.winner === m.p2 ? 'text-set-blue' : 'text-gray-400'} truncate max-w-[80px] text-right">${m.p2}</span>
+            </div>
+          `).join('');
+        }
+      } catch (e) {
+        console.error('Scoreboard hatası:', e);
+      }
+    }
+
+    // Bootstrap
+    window.addEventListener('DOMContentLoaded', () => {
+      fetchInfo();
+      updateScoreboard();
+      setInterval(updateScoreboard, 3000); // Polling every 3s
+      if (window.lucide) window.lucide.createIcons();
+    });
+  </script>
+</body>
+</html>
