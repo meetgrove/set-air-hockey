@@ -262,10 +262,15 @@ const Game = {
     const urlParams = new URLSearchParams(window.location.search);
     const roomParam = urlParams.get('room');
     if (roomParam) {
+      this.mode = 'qr';
+      this.isHost = false;
+      this.role = 'p2';
+      this.roomCode = roomParam.toUpperCase().trim();
       this.switchScreen('screen-room');
-      document.getElementById('manual-code-input').value = roomParam.toUpperCase();
+      const manualInput = document.getElementById('manual-code-input');
+      if (manualInput) manualInput.value = this.roomCode;
       this.connectWebSocket(() => {
-        this.joinRoom(roomParam.toUpperCase());
+        this.joinRoom(this.roomCode);
       });
     }
   },
@@ -381,6 +386,9 @@ const Game = {
     document.getElementById('btn-join-code').addEventListener('click', () => {
       const code = document.getElementById('manual-code-input').value.trim().toUpperCase();
       if (!code) return alert('Lütfen geçerli bir 4 haneli oda kodu girin!');
+      this.mode = 'qr';
+      this.isHost = false;
+      this.role = 'p2';
       this.p2Name = document.getElementById('player-name').value.trim() || 'Oyuncu 2';
       this.connectWebSocket(() => {
         this.joinRoom(code);
@@ -520,6 +528,7 @@ const Game = {
   },
 
   createRoom() {
+    this.mode = 'qr';
     this.isHost = true;
     this.role = 'p1';
     this.ws.send(JSON.stringify({
@@ -529,12 +538,13 @@ const Game = {
   },
 
   joinRoom(code) {
+    this.mode = 'qr';
     this.isHost = false;
     this.role = 'p2';
-    this.roomCode = code;
+    this.roomCode = (code || '').toUpperCase().trim();
     this.ws.send(JSON.stringify({
       type: 'join_room',
-      roomCode: code,
+      roomCode: this.roomCode,
       name: this.p2Name
     }));
   },
@@ -560,11 +570,17 @@ const Game = {
     }
 
     else if (msg.type === 'player_joined') {
+      this.mode = 'qr';
+      this.isHost = true;
+      this.role = 'p1';
       this.p2Name = msg.opponentName || 'Oyuncu 2';
       this.startMatch();
     }
 
     else if (msg.type === 'room_joined') {
+      this.mode = 'qr';
+      this.isHost = false;
+      this.role = 'p2';
       this.p1Name = msg.opponentName || 'Oyuncu 1';
       this.startMatch();
     }
@@ -610,6 +626,7 @@ const Game = {
   // ==========================================
   bindControls() {
     const canvas = this.canvas;
+    const wrapper = document.getElementById('canvas-wrapper') || canvas;
 
     const getCanvasPos = (clientX, clientY) => {
       const rect = canvas.getBoundingClientRect();
@@ -619,29 +636,49 @@ const Game = {
     };
 
     // Pointer Events (Touch & Mouse unified)
-    canvas.addEventListener('pointerdown', (e) => {
+    const onPointerDown = (e) => {
       e.preventDefault();
-      try { canvas.setPointerCapture(e.pointerId); } catch (_) {}
+      try { e.target.setPointerCapture(e.pointerId); } catch (_) {}
       const pos = getCanvasPos(e.clientX, e.clientY);
       this.activePointers.set(e.pointerId, pos);
       this.handlePointerMove(e.pointerId, pos.x, pos.y);
-    }, { passive: false });
+    };
 
-    canvas.addEventListener('pointermove', (e) => {
+    const onPointerMove = (e) => {
       e.preventDefault();
       if (!this.activePointers.has(e.pointerId)) return;
       const pos = getCanvasPos(e.clientX, e.clientY);
       this.activePointers.set(e.pointerId, pos);
       this.handlePointerMove(e.pointerId, pos.x, pos.y);
-    }, { passive: false });
+    };
 
-    const pointerEnd = (e) => {
-      try { canvas.releasePointerCapture(e.pointerId); } catch (_) {}
+    const onPointerUp = (e) => {
+      try { e.target.releasePointerCapture(e.pointerId); } catch (_) {}
       this.activePointers.delete(e.pointerId);
     };
 
-    canvas.addEventListener('pointerup', pointerEnd);
-    canvas.addEventListener('pointercancel', pointerEnd);
+    canvas.addEventListener('pointerdown', onPointerDown, { passive: false });
+    wrapper.addEventListener('pointerdown', onPointerDown, { passive: false });
+    window.addEventListener('pointermove', onPointerMove, { passive: false });
+    window.addEventListener('pointerup', onPointerUp, { passive: false });
+    window.addEventListener('pointercancel', onPointerUp, { passive: false });
+
+    // Touch event fallback for mobile browsers that do not fire pointermove reliably
+    const onTouch = (e) => {
+      e.preventDefault();
+      if (e.touches && e.touches.length > 0) {
+        for (let i = 0; i < e.touches.length; i++) {
+          const t = e.touches[i];
+          const pos = getCanvasPos(t.clientX, t.clientY);
+          this.handlePointerMove(t.identifier, pos.x, pos.y);
+        }
+      }
+    };
+
+    canvas.addEventListener('touchstart', onTouch, { passive: false });
+    canvas.addEventListener('touchmove', onTouch, { passive: false });
+    wrapper.addEventListener('touchstart', onTouch, { passive: false });
+    wrapper.addEventListener('touchmove', onTouch, { passive: false });
   },
 
   handlePointerMove(pointerId, x, y) {
@@ -653,7 +690,7 @@ const Game = {
         this.p1Paddle.x = Math.max(this.p1Paddle.r + 15, Math.min(this.V_WIDTH - this.p1Paddle.r - 15, x));
         this.p1Paddle.y = Math.max(this.p1Paddle.r + 15, Math.min(this.V_HEIGHT / 2 - this.p1Paddle.r - 10, y));
 
-        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+        if (this.ws && this.ws.readyState === WebSocket.OPEN && (!this.ws.bufferedAmount || this.ws.bufferedAmount < 4096)) {
           this.ws.send(JSON.stringify({
             type: 'paddle_move',
             x: this.p1Paddle.x,
@@ -668,7 +705,7 @@ const Game = {
         this.p2Paddle.x = Math.max(this.p2Paddle.r + 15, Math.min(this.V_WIDTH - this.p2Paddle.r - 15, x));
         this.p2Paddle.y = Math.max(this.V_HEIGHT / 2 + this.p2Paddle.r + 10, Math.min(this.V_HEIGHT - this.p2Paddle.r - 15, y));
 
-        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+        if (this.ws && this.ws.readyState === WebSocket.OPEN && (!this.ws.bufferedAmount || this.ws.bufferedAmount < 4096)) {
           this.ws.send(JSON.stringify({
             type: 'paddle_move',
             x: this.p2Paddle.x,
