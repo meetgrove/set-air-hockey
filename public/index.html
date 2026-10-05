@@ -48,7 +48,7 @@
 <body class="bg-[#07080b] text-white select-none overflow-hidden touch-none antialiased">
 
   <!-- ================= SCREEN 1: MAIN LOBBY ================= -->
-  <div id="screen-lobby" class="screen active flex flex-col justify-between items-center p-6 h-screen max-w-md mx-auto relative z-20">
+  <div id="screen-lobby" class="screen active flex flex-col justify-between items-center p-6 max-w-md mx-auto">
     <!-- Top Branding -->
     <div class="w-full flex items-center justify-between pt-2">
       <div class="flex items-center space-x-2">
@@ -146,7 +146,7 @@
   </div>
 
   <!-- ================= SCREEN 2: QR & ROOM LOBBY ================= -->
-  <div id="screen-room" class="screen flex flex-col justify-between items-center p-6 h-screen max-w-md mx-auto relative z-20">
+  <div id="screen-room" class="screen flex flex-col justify-between items-center p-6 max-w-md mx-auto">
     <!-- Header -->
     <div class="w-full flex items-center justify-between">
       <button id="btn-room-back" class="p-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:text-white">
@@ -201,7 +201,7 @@
   </div>
 
   <!-- ================= SCREEN 3: GAME ARENA ================= -->
-  <div id="screen-game" class="screen flex flex-col items-center justify-center h-screen w-screen relative overflow-hidden">
+  <div id="screen-game" class="screen flex flex-col items-center justify-center overflow-hidden">
     <!-- Top HUD Scorebar -->
     <div id="game-hud" class="absolute top-0 inset-x-0 z-30 flex items-center justify-between px-4 py-3 bg-gradient-to-b from-black/80 via-black/40 to-transparent pointer-events-none">
       <!-- Player 1 (Red / Top) -->
@@ -245,8 +245,8 @@
     </div>
 
     <!-- Interactive Canvas Table -->
-    <div id="canvas-wrapper" class="relative flex items-center justify-center w-full h-full max-w-md max-h-[92vh] p-2">
-      <canvas id="air-hockey-canvas" class="w-full h-full rounded-2xl shadow-2xl"></canvas>
+    <div id="canvas-wrapper" class="relative flex items-center justify-center w-full h-[calc(100vh-80px)] max-w-md p-2 mt-12">
+      <canvas id="air-hockey-canvas" class="rounded-2xl shadow-2xl block"></canvas>
     </div>
   </div>
 

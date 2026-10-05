@@ -282,12 +282,21 @@ const Game = {
 
   resizeCanvas() {
     const wrapper = document.getElementById('canvas-wrapper');
-    if (!wrapper) return;
+    if (!this.canvas) {
+      this.canvas = document.getElementById('air-hockey-canvas');
+      if (this.canvas) this.ctx = this.canvas.getContext('2d');
+    }
+    if (!this.canvas) return;
 
-    const maxW = wrapper.clientWidth;
-    const maxH = wrapper.clientHeight;
+    // Use wrapper client dimensions if available, fallback to window viewport
+    let maxW = (wrapper && wrapper.clientWidth > 0) ? wrapper.clientWidth : window.innerWidth;
+    let maxH = (wrapper && wrapper.clientHeight > 0) ? wrapper.clientHeight : window.innerHeight;
 
-    const aspect = this.V_WIDTH / this.V_HEIGHT;
+    // Constrain to available viewport minus margins and top HUD score bar (~75px)
+    maxW = Math.min(maxW, window.innerWidth - 16, 440);
+    maxH = Math.min(maxH, window.innerHeight - 80, 860);
+
+    const aspect = this.V_WIDTH / this.V_HEIGHT; // 500 / 900
     let w = maxW;
     let h = w / aspect;
 
@@ -296,11 +305,14 @@ const Game = {
       w = h * aspect;
     }
 
+    w = Math.max(Math.round(w), 260);
+    h = Math.max(Math.round(h), 468);
+
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    this.canvas.width = w * dpr;
-    this.canvas.height = h * dpr;
-    this.canvas.style.width = `${w}px`;
-    this.canvas.style.height = `${h}px`;
+    this.canvas.width = Math.round(w * dpr);
+    this.canvas.height = Math.round(h * dpr);
+    this.canvas.style.width = `${Math.round(w)}px`;
+    this.canvas.style.height = `${Math.round(h)}px`;
 
     this.scale = (w * dpr) / this.V_WIDTH;
   },
@@ -308,7 +320,12 @@ const Game = {
   switchScreen(screenId) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     const target = document.getElementById(screenId);
-    if (target) target.classList.add('active');
+    if (target) {
+      target.classList.add('active');
+      window.scrollTo(0, 0);
+      document.body.scrollTop = 0;
+      if (document.documentElement) document.documentElement.scrollTop = 0;
+    }
     if (window.lucide) window.lucide.createIcons();
   },
 
@@ -603,20 +620,23 @@ const Game = {
 
     // Pointer Events (Touch & Mouse unified)
     canvas.addEventListener('pointerdown', (e) => {
-      canvas.setPointerCapture(e.pointerId);
+      e.preventDefault();
+      try { canvas.setPointerCapture(e.pointerId); } catch (_) {}
       const pos = getCanvasPos(e.clientX, e.clientY);
       this.activePointers.set(e.pointerId, pos);
       this.handlePointerMove(e.pointerId, pos.x, pos.y);
-    });
+    }, { passive: false });
 
     canvas.addEventListener('pointermove', (e) => {
+      e.preventDefault();
       if (!this.activePointers.has(e.pointerId)) return;
       const pos = getCanvasPos(e.clientX, e.clientY);
       this.activePointers.set(e.pointerId, pos);
       this.handlePointerMove(e.pointerId, pos.x, pos.y);
-    });
+    }, { passive: false });
 
     const pointerEnd = (e) => {
+      try { canvas.releasePointerCapture(e.pointerId); } catch (_) {}
       this.activePointers.delete(e.pointerId);
     };
 
@@ -684,8 +704,16 @@ const Game = {
   startMatch() {
     this.switchScreen('screen-game');
     this.resizeCanvas();
-    this.updateHUD();
+    requestAnimationFrame(() => {
+      this.resizeCanvas();
+      this.render();
+    });
+    setTimeout(() => {
+      this.resizeCanvas();
+      this.render();
+    }, 60);
 
+    this.updateHUD();
     this.audio.whistle();
     this.resetGame();
   },
