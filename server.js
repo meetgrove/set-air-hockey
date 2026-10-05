@@ -430,18 +430,20 @@ function handleClientMessage(ws, data) {
     });
   }
 
-  // Host sends puck state & goal events
-  else if (type === 'puck_sync' && ws.playerRole === 'p1') {
+  // Puck sync & bounce events from either player
+  else if (type === 'puck_sync') {
     const room = rooms.get(ws.roomCode);
     if (!room) return;
 
-    if (room.guestWs && room.guestWs.readyState === WebSocket.OPEN) {
-      room.guestWs.send(JSON.stringify({
+    const opponent = ws.playerRole === 'p1' ? room.guestWs : room.hostWs;
+    if (opponent && opponent.readyState === WebSocket.OPEN) {
+      opponent.send(JSON.stringify({
         type: 'puck_sync',
         x: data.x,
         y: data.y,
         vx: data.vx,
-        vy: data.vy
+        vy: data.vy,
+        bounce: !!data.bounce
       }));
     }
 

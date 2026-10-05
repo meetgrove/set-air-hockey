@@ -586,20 +586,36 @@ const Game = {
     }
 
     else if (msg.type === 'opponent_paddle') {
-      // Sync opponent paddle position
+      // Smooth interpolation target for opponent paddle
       const targetPaddle = this.role === 'p1' ? this.p2Paddle : this.p1Paddle;
-      targetPaddle.x = msg.x;
-      targetPaddle.y = msg.y;
+      targetPaddle.targetX = msg.x;
+      targetPaddle.targetY = msg.y;
       targetPaddle.vx = msg.vx;
       targetPaddle.vy = msg.vy;
     }
 
-    else if (msg.type === 'puck_sync' && !this.isHost) {
-      // Guest syncs puck from Host
-      this.puck.x = msg.x;
-      this.puck.y = msg.y;
-      this.puck.vx = msg.vx;
-      this.puck.vy = msg.vy;
+    else if (msg.type === 'puck_sync') {
+      if (msg.bounce) {
+        // Immediate trajectory update on opponent bounce
+        this.puck.x = msg.x;
+        this.puck.y = msg.y;
+        this.puck.vx = msg.vx;
+        this.puck.vy = msg.vy;
+      } else if (!this.isHost) {
+        // Smooth drift reconciliation from authoritative Host
+        const dx = msg.x - this.puck.x;
+        const dy = msg.y - this.puck.y;
+        const dist = Math.hypot(dx, dy);
+        if (dist > 70) {
+          this.puck.x = msg.x;
+          this.puck.y = msg.y;
+        } else {
+          this.puck.x += dx * 0.35;
+          this.puck.y += dy * 0.35;
+        }
+        this.puck.vx = msg.vx;
+        this.puck.vy = msg.vy;
+      }
     }
 
     else if (msg.type === 'goal_event') {
@@ -897,87 +913,106 @@ const Game = {
     this.p2Paddle.prevX = this.p2Paddle.x;
     this.p2Paddle.prevY = this.p2Paddle.y;
 
+    // Smoothly interpolate opponent paddle position
+    const oppPaddle = this.role === 'p1' ? this.p2Paddle : this.p1Paddle;
+    if (oppPaddle.targetX !== undefined) {
+      oppPaddle.x += (oppPaddle.targetX - oppPaddle.x) * 0.45;
+      oppPaddle.y += (oppPaddle.targetY - oppPaddle.y) * 0.45;
+    }
+
     // AI Bot Behavior (if in bot mode)
     if (this.mode === 'bot') {
       this.updateBot();
     }
 
-    // Only Host (or offline modes) runs authoritative puck physics
-    if (this.mode !== 'qr' || this.isHost) {
-      const puck = this.puck;
+    // Puck Physics Simulation (RUNS ON BOTH HOST AND GUEST FOR 60FPS SMOOTHNESS)
+    const puck = this.puck;
 
-      // Air cushion friction
-      puck.vx *= 0.994;
-      puck.vy *= 0.994;
+    // Air cushion friction
+    puck.vx *= 0.994;
+    puck.vy *= 0.994;
 
-      // Position update
-      puck.x += puck.vx;
-      puck.y += puck.vy;
+    // Position update
+    puck.x += puck.vx;
+    puck.y += puck.vy;
 
-      // Speed cap
-      const currentSpeed = Math.hypot(puck.vx, puck.vy);
-      const maxSpeed = 24;
-      if (currentSpeed > maxSpeed) {
-        puck.vx = (puck.vx / currentSpeed) * maxSpeed;
-        puck.vy = (puck.vy / currentSpeed) * maxSpeed;
-      }
+    // Speed cap
+    const currentSpeed = Math.hypot(puck.vx, puck.vy);
+    const maxSpeed = 24;
+    if (currentSpeed > maxSpeed) {
+      puck.vx = (puck.vx / currentSpeed) * maxSpeed;
+      puck.vy = (puck.vy / currentSpeed) * maxSpeed;
+    }
 
-      // Record motion trail
-      puck.trail.unshift({ x: puck.x, y: puck.y });
-      if (puck.trail.length > 7) puck.trail.pop();
+    // Record motion trail
+    puck.trail.unshift({ x: puck.x, y: puck.y });
+    if (puck.trail.length > 7) puck.trail.pop();
 
-      // Side Walls Collision (Left & Right)
-      const railMargin = 15;
-      if (puck.x - puck.r < railMargin) {
-        puck.x = railMargin + puck.r;
-        puck.vx = -puck.vx * 0.92;
-        this.audio.hitWall();
-        this.particles.emit(puck.x, puck.y, '#ffffff', 6, 4);
-      } else if (puck.x + puck.r > this.V_WIDTH - railMargin) {
-        puck.x = this.V_WIDTH - railMargin - puck.r;
-        puck.vx = -puck.vx * 0.92;
-        this.audio.hitWall();
-        this.particles.emit(puck.x, puck.y, '#ffffff', 6, 4);
-      }
+    // Side Walls Collision (Left & Right)
+    const railMargin = 15;
+    if (puck.x - puck.r < railMargin) {
+      puck.x = railMargin + puck.r;
+      puck.vx = -puck.vx * 0.92;
+      this.audio.hitWall();
+      this.particles.emit(puck.x, puck.y, '#ffffff', 6, 4);
+    } else if (puck.x + puck.r > this.V_WIDTH - railMargin) {
+      puck.x = this.V_WIDTH - railMargin - puck.r;
+      puck.vx = -puck.vx * 0.92;
+      this.audio.hitWall();
+      this.particles.emit(puck.x, puck.y, '#ffffff', 6, 4);
+    }
 
-      // Goal Checks (Top Goal & Bottom Goal)
-      const goalLeft = (this.V_WIDTH - this.GOAL_WIDTH) / 2;
-      const goalRight = (this.V_WIDTH + this.GOAL_WIDTH) / 2;
+    // Goal Checks & End Walls
+    const goalLeft = (this.V_WIDTH - this.GOAL_WIDTH) / 2;
+    const goalRight = (this.V_WIDTH + this.GOAL_WIDTH) / 2;
 
-      // Top Wall / Goal
-      if (puck.y - puck.r < railMargin) {
-        if (puck.x > goalLeft && puck.x < goalRight) {
-          // Player 2 Scores!
+    // Top Wall / Goal
+    if (puck.y - puck.r < railMargin) {
+      if (puck.x > goalLeft && puck.x < goalRight) {
+        if (this.mode !== 'qr' || this.isHost) {
           this.handleGoalScored('p2', this.score[0], this.score[1] + 1, true);
           return;
-        } else {
-          puck.y = railMargin + puck.r;
-          puck.vy = -puck.vy * 0.92;
-          this.audio.hitWall();
-          this.particles.emit(puck.x, puck.y, '#ffffff', 6, 4);
         }
+      } else {
+        puck.y = railMargin + puck.r;
+        puck.vy = -puck.vy * 0.92;
+        this.audio.hitWall();
+        this.particles.emit(puck.x, puck.y, '#ffffff', 6, 4);
       }
+    }
 
-      // Bottom Wall / Goal
-      if (puck.y + puck.r > this.V_HEIGHT - railMargin) {
-        if (puck.x > goalLeft && puck.x < goalRight) {
-          // Player 1 Scores!
+    // Bottom Wall / Goal
+    if (puck.y + puck.r > this.V_HEIGHT - railMargin) {
+      if (puck.x > goalLeft && puck.x < goalRight) {
+        if (this.mode !== 'qr' || this.isHost) {
           this.handleGoalScored('p1', this.score[0] + 1, this.score[1], true);
           return;
-        } else {
-          puck.y = this.V_HEIGHT - railMargin - puck.r;
-          puck.vy = -puck.vy * 0.92;
-          this.audio.hitWall();
-          this.particles.emit(puck.x, puck.y, '#ffffff', 6, 4);
         }
+      } else {
+        puck.y = this.V_HEIGHT - railMargin - puck.r;
+        puck.vy = -puck.vy * 0.92;
+        this.audio.hitWall();
+        this.particles.emit(puck.x, puck.y, '#ffffff', 6, 4);
       }
+    }
 
-      // Paddle Collisions
+    // Paddle Collisions (Host checks P1, Guest checks P2; in offline mode, check both)
+    if (this.mode !== 'qr') {
       this.checkPaddleCollision(this.p1Paddle, puck);
       this.checkPaddleCollision(this.p2Paddle, puck);
+    } else {
+      if (this.isHost) {
+        this.checkPaddleCollision(this.p1Paddle, puck);
+      } else {
+        this.checkPaddleCollision(this.p2Paddle, puck);
+      }
+    }
 
-      // Broadcast puck state to Guest if Host
-      if (this.mode === 'qr' && this.isHost && this.ws && this.ws.readyState === WebSocket.OPEN) {
+    // Host periodically syncs authoritative puck position (at ~30Hz) to prevent drift
+    if (this.mode === 'qr' && this.isHost && this.ws && this.ws.readyState === WebSocket.OPEN) {
+      const now = performance.now();
+      if (!this._lastPuckSync || now - this._lastPuckSync > 33) {
+        this._lastPuckSync = now;
         this.ws.send(JSON.stringify({
           type: 'puck_sync',
           x: puck.x,
@@ -1023,6 +1058,18 @@ const Game = {
         const speedRatio = Math.min(speed / 20, 1);
         this.audio.hitPaddle(speedRatio);
         this.particles.emit(puck.x, puck.y, paddle.color, 14, 7);
+
+        // Instant bounce sync in QR mode
+        if (this.mode === 'qr' && this.ws && this.ws.readyState === WebSocket.OPEN) {
+          this.ws.send(JSON.stringify({
+            type: 'puck_sync',
+            x: puck.x,
+            y: puck.y,
+            vx: puck.vx,
+            vy: puck.vy,
+            bounce: true
+          }));
+        }
       }
     }
   },
